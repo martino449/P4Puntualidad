@@ -1,81 +1,115 @@
 #-------------------------------
-# Nome:        P4puntualidad
-# Scopo:       Addestrare un classificatore ad albero decisionale e fare previsioni
+# Name:        P4puntualidad
+# Purpose:     Train a decision tree classifier and make predictions
 #
-# Autore:      Martin449
+# Author:      Martin449
 #
-# Creato il:   18/07/2024
-# dipendenze:
+# Created on:  18/07/2024
+# dependencies:
 # python = ">=3.10.0,<3.12"
 # pandas = "^2.2.2"
 # scikit-learn = "^1.5.1"
 #
-# Licenza:     GNU GENERAL PUBLIC LICENSE v.3, 29 Giugno 2007
+# License:     GNU GENERAL PUBLIC LICENSE v.3, June 29, 2007
 #-------------------------------
 
 
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import LabelEncoder
+import logging
 
-# Carica il dataset
-try:
-    partite = pd.read_csv("partite.csv")
-except FileNotFoundError:
-    raise FileNotFoundError("Il file 'partite.csv' non è stato trovato.")
-except pd.errors.EmptyDataError:
-    raise ValueError("Il file 'partite.csv' è vuoto.")
-except pd.errors.ParserError:
-    raise ValueError("Errore nel parsing del file 'partite.csv'. Controlla il formato del file.")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-# Separa le caratteristiche (X) e la variabile target (y)
-X = partite.drop(columns=["risultato"])
-y = partite["risultato"]
+def load_data(file_path):
+    """Load the dataset from the given file path."""
+    try:
+        data = pd.read_csv(file_path)
+        logging.info("Dataset loaded successfully.")
+        return data
+    except FileNotFoundError:
+        logging.error("The file '%s' was not found.", file_path)
+        raise
+    except pd.errors.EmptyDataError:
+        logging.error("The file '%s' is empty.", file_path)
+        raise
+    except pd.errors.ParserError:
+        logging.error("Error parsing the file '%s'. Check the file format.", file_path)
+        raise
 
-# Controlla la presenza di valori mancanti nelle caratteristiche
-if X.isnull().any().any():
-    raise ValueError("Le caratteristiche contengono valori mancanti. Per favore gestisci i valori mancanti prima dell'addestramento.")
+def preprocess_data(data):
+    """Preprocess the data: split into features and target, handle missing values, and encode categorical variables."""
+    if 'risultato' not in data.columns:
+        raise ValueError("'risultato' column is missing from the dataset.")
+    
+    # Separate features and target
+    X = data.drop(columns=["risultato"])
+    y = data["risultato"]
+    
+    # Check for missing values
+    if X.isnull().any().any():
+        raise ValueError("Features contain missing values. Please handle missing values before training.")
+    
+    # Encode categorical variables
+    label_encoders = {}
+    for column in X.columns:
+        if X[column].dtype == 'object':
+            le = LabelEncoder()
+            X[column] = le.fit_transform(X[column])
+            label_encoders[column] = le
+            logging.info("Encoded column: %s", column)
+    
+    return X, y, label_encoders
 
-# Codifica le variabili categoriche
-label_encoders = {}
-for column in X.columns:
-    if X[column].dtype == 'object':
-        le = LabelEncoder()
-        X[column] = le.fit_transform(X[column])
-        label_encoders[column] = le
+def train_model(X, y):
+    """Train a decision tree classifier with the given features and target."""
+    model = DecisionTreeClassifier()
+    model.fit(X, y)
+    logging.info("Model trained successfully.")
+    return model
 
-# Inizializza il classificatore ad albero decisionale
-modello = DecisionTreeClassifier()
+def predict_match(model, input_data, label_encoders):
+    """Make predictions for the given input data."""
+    input_df = pd.DataFrame([input_data], columns=['squadra_casa', 'squadra_trasferta'])
+    
+    # Encode the input data
+    for column in input_df.columns:
+        if column in label_encoders:
+            if not input_df[column].isin(label_encoders[column].classes_).all():
+                raise ValueError("The entered teams are not present in the dataset. Check the team names.")
+            input_df[column] = label_encoders[column].transform(input_df[column])
+        else:
+            raise ValueError(f"The column '{column}' is not present in the training dataset.")
+    
+    # Make predictions
+    try:
+        prediction = model.predict(input_df)
+        logging.info("Prediction made successfully.")
+        return prediction[0]
+    except ValueError as e:
+        logging.error("Prediction error: %s", e)
+        raise
 
-# Addestra il modello con le caratteristiche e la variabile target
-modello.fit(X, y)
+def main():
+    # Load and preprocess data
+    data = load_data("partite.csv")
+    X, y, label_encoders = preprocess_data(data)
+    
+    # Train the model
+    model = train_model(X, y)
+    
+    # Request user input
+    user_input = input("Enter the teams you want to analyze (first the home team, then the away team, separated by a comma, e.g., inter, milan): \n")
+    teams = user_input.split(', ')
+    
+    if len(teams) != 2:
+        raise ValueError("Input must contain exactly two teams separated by a comma.")
+    
+    # Predict and display results
+    prediction = predict_match(model, teams, label_encoders)
+    print("Prediction:")
+    print(prediction)
 
-# Richiedi input all'utente
-partita = input("Inserisci le squadre che vuoi analizzare (prima quella in casa, poi quella in trasferta e separale con una virgola ad es. inter, milan): \n")
-
-# Prepara l'input dell'utente
-squadre = partita.split(', ')
-if len(squadre) != 2:
-    raise ValueError("L'input deve contenere esattamente due squadre separate da una virgola.")
-
-# Codifica l'input dell'utente
-input_df = pd.DataFrame([squadre], columns=['squadra_casa', 'squadra_trasferta'])
-
-# Verifica se le colonne di input corrispondono a quelle del dataset
-for column in input_df.columns:
-    if column in label_encoders:
-        if not input_df[column].isin(label_encoders[column].classes_).all():
-            raise ValueError(f"Le squadre inserite non sono presenti nel dataset. Verifica i nomi delle squadre.")
-        input_df[column] = label_encoders[column].transform(input_df[column])
-    else:
-        raise ValueError(f"La colonna '{column}' non è presente nel dataset di addestramento.")
-
-# Fai previsioni basate sull'input dell'utente
-try:
-    previsione = modello.predict(input_df)
-except ValueError as e:
-    raise ValueError(f"Errore nella previsione: {e}")
-
-# Mostra le previsioni
-print("Previsioni:")
-print(previsione[0])
+if __name__ == "__main__":
+    main()
