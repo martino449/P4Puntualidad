@@ -6,10 +6,10 @@
 #
 # Created on:  18/07/2024
 # dependencies:
-# python = ">=3.10.0,<3.12"
-#pandas = "^2.2.2"
-#scikit-learn = "^1.5.1"
-#cryptography = "^42.0.8"
+#    python = ">=3.10.0,<3.12"
+#    pandas = "^2.2.2"
+#    scikit-learn = "^1.5.1"
+#    cryptography = "^42.0.8"
 #
 # License:     GNU GENERAL PUBLIC LICENSE v.3, June 29, 2007
 #-------------------------------
