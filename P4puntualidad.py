@@ -13,44 +13,64 @@
 # License:     GNU GENERAL PUBLIC LICENSE v.3, June 29, 2007
 #-------------------------------
 
-
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import LabelEncoder
 import logging
+import json
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+
+def log_interaction(action, details):
+    """Log interactions to a file named log.json."""
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "action": action,
+        "details": details
+    }
+
+    try:
+        with open('log.json', 'a') as log_file:
+            json.dump(log_entry, log_file)
+            log_file.write('\n')  # Write a new line for each entry
+    except Exception as e:
+        logging.error("Failed to write to log file: %s", e)
 
 def load_data(file_path):
     """Load the dataset from the given file path."""
     try:
         data = pd.read_csv(file_path)
         logging.info("Dataset loaded successfully.")
+        log_interaction("load_data", {"file_path": file_path, "status": "success"})
         return data
     except FileNotFoundError:
         logging.error("The file '%s' was not found.", file_path)
+        log_interaction("load_data", {"file_path": file_path, "status": "error", "message": "File not found"})
         raise
     except pd.errors.EmptyDataError:
         logging.error("The file '%s' is empty.", file_path)
+        log_interaction("load_data", {"file_path": file_path, "status": "error", "message": "File is empty"})
         raise
     except pd.errors.ParserError:
         logging.error("Error parsing the file '%s'. Check the file format.", file_path)
+        log_interaction("load_data", {"file_path": file_path, "status": "error", "message": "File parsing error"})
         raise
 
 def preprocess_data(data):
     """Preprocess the data: split into features and target, handle missing values, and encode categorical variables."""
     if 'risultato' not in data.columns:
         raise ValueError("'risultato' column is missing from the dataset.")
-    
+
     # Separate features and target
     X = data.drop(columns=["risultato"])
     y = data["risultato"]
-    
+
     # Check for missing values
     if X.isnull().any().any():
         raise ValueError("Features contain missing values. Please handle missing values before training.")
-    
+
     # Encode categorical variables
     label_encoders = {}
     for column in X.columns:
@@ -59,7 +79,8 @@ def preprocess_data(data):
             X[column] = le.fit_transform(X[column])
             label_encoders[column] = le
             logging.info("Encoded column: %s", column)
-    
+            log_interaction("preprocess_data", {"action": "encode", "column": column})
+
     return X, y, label_encoders
 
 def train_model(X, y):
@@ -67,12 +88,13 @@ def train_model(X, y):
     model = DecisionTreeClassifier()
     model.fit(X, y)
     logging.info("Model trained successfully.")
+    log_interaction("train_model", {"status": "success"})
     return model
 
 def predict_match(model, input_data, label_encoders):
     """Make predictions for the given input data."""
     input_df = pd.DataFrame([input_data], columns=['squadra_casa', 'squadra_trasferta'])
-    
+
     # Encode the input data
     for column in input_df.columns:
         if column in label_encoders:
@@ -81,31 +103,36 @@ def predict_match(model, input_data, label_encoders):
             input_df[column] = label_encoders[column].transform(input_df[column])
         else:
             raise ValueError(f"The column '{column}' is not present in the training dataset.")
-    
+
     # Make predictions
     try:
         prediction = model.predict(input_df)
         logging.info("Prediction made successfully.")
+        log_interaction("predict_match", {"input_data": input_data, "prediction": prediction[0]})
         return prediction[0]
     except ValueError as e:
         logging.error("Prediction error: %s", e)
+        log_interaction("predict_match", {"input_data": input_data, "status": "error", "message": str(e)})
         raise
 
 def main():
     # Load and preprocess data
     data = load_data("partite.csv")
     X, y, label_encoders = preprocess_data(data)
-    
+
     # Train the model
     model = train_model(X, y)
-    
+
     # Request user input
     user_input = input("Enter the teams you want to analyze (first the home team, then the away team, separated by a comma, e.g., inter, milan): \n")
     teams = user_input.split(', ')
-    
+
     if len(teams) != 2:
         raise ValueError("Input must contain exactly two teams separated by a comma.")
-    
+
+    # Log user input
+    log_interaction("user_input", {"teams": teams})
+
     # Predict and display results
     prediction = predict_match(model, teams, label_encoders)
     print("Prediction:")
