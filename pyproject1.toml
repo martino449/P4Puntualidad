@@ -1,0 +1,10 @@
+name = "python-template"
+version = "0.1.0"
+description = ""
+authors = Martin449
+Created on:  18/07/2024
+[dependencies]
+python = ">=3.10.0,<3.12"
+cryptography = "^42.0.8"
+pandas = "^2.2.2"
+scikit-learn = "^1.5.1"
