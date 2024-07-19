@@ -14,10 +14,8 @@
 # License:     GNU GENERAL PUBLIC LICENSE v.3, June 29, 2007
 #-------------------------------
 
-
-
 import pandas as pd
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 import logging
 import json
@@ -111,10 +109,10 @@ def preprocess_data(data):
     return X, y, label_encoders
 
 def train_model(X, y):
-    """Train a decision tree classifier with the given features and target."""
-    model = DecisionTreeClassifier()
+    """Train a random forest classifier with the given features and target."""
+    model = RandomForestClassifier()
     model.fit(X, y)
-    logging.info("Model trained successfully.")
+    logging.info("Random Forest model trained successfully.")
     log_interaction("train_model", {"status": "success"})
     return model
 
