@@ -5,6 +5,6 @@ Decisional tree capable of choosing probable results for footbal matchs given a 
 I'm not responsible for you loosing bets after using my program.
 I'm not responsible for whatever you do with this software!
 
-#How to give me Credits
-Please don't remove the pyproject.toml file as it serves as credits for the project
-Also i would prefer that you fork the project if you wanna modify it but you're not required to do that
+#How to give me Credits:
+To give me credits just don't don't remove the my name from the pyproject1.toml file as it serves as credits for the project and copy it in the program you wanna create using my code...fell free to add your name to the authors!
+
